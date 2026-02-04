@@ -210,67 +210,41 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_clean
 
-# Spara till SQLite-databas med tabell för huvuddata eller valideringsdata
+# === Läs rådata och kör pipeline ===
+df_main_raw = pd.read_csv("friskvard_data.csv")
+df_val_raw = pd.read_csv("friskvard_validation.csv")
+
+df_clean = transform_data(df_main_raw)
+df_val = transform_data(df_val_raw)
+
+# Sätt dataset-flagga
+df_clean["dataset"] = "main"
+df_val["dataset"] = "validation"
+
+# Spara i SQLite-databas
 def load_to_sqlite(
     df: pd.DataFrame,
     db_path: str = "friskvard_data_cleaned.db",
     table: str = "friskvard_data",
     if_exists: str = "replace",
-    dataset_label: str | None = "main",
 ) -> None:
-    """Sparar data till SQLite och lägger ev. till kolumnen dataset.
-
-    - dataset_label="main" vid huvuddata
-    - dataset_label="validation" vid valideringsdata
-    """
+    """Sparar DataFrame till SQLite."""
     conn = sqlite3.connect(db_path)
-    try:
-        df_to_save = df.copy()
-        # Lägg till dataset-kolumn för att kunna skilja datakällor
-        if dataset_label is not None:
-            df_to_save["dataset"] = dataset_label
-        df_to_save.to_sql(table, conn, if_exists=if_exists, index=False)
-    finally:
-        conn.close()
+    df.to_sql(table, conn, if_exists=if_exists, index=False)
+    conn.close()
 
-def load_validation_to_sqlite(
+
+def load_dataset_to_db(
     df: pd.DataFrame,
     db_path: str = "friskvard_data_cleaned.db",
     table: str = "friskvard_data",
-    if_exists: str = "append",
-) -> None:
-    """Sparar valideringsdata i samma tabell som dataset='validation'."""
-    load_to_sqlite(
-        df,
-        db_path=db_path,
-        table=table,
-        if_exists=if_exists,
-        dataset_label="validation",
-    )
-    
-def run_pipeline(
-    source_csv: str = "friskvard_data.csv",
-    db_path: str = "friskvard_data_cleaned.db",
-    table: str = "friskvard_data",
-) -> None:
-    """Kör ETL-pipelinen och sparar huvuddata med dataset='main'."""
-    print(f"Läser in: {source_csv}")
-    # Läs rådata
-    df = pd.read_csv(source_csv)
-    print(f"Rader/kolumner (raw): {df.shape}")
-    # Rengör data
-    df_clean = transform_data(df)
-    print(f"Rader/kolumner (clean): {df_clean.shape}")
-    # Spara till SQLite (ersätt tabellen)
-    load_to_sqlite(df_clean, db_path=db_path, table=table, if_exists="replace")
-    print(f"Sparat till SQLite: {db_path} (tabell: {table}, dataset='main')")
-    # Verifiera att kolumnen dataset finns
-    conn = sqlite3.connect(db_path)
-    try:
-        cols = pd.read_sql(f"PRAGMA table_info({table});", conn)["name"].tolist()
-    finally:
-        conn.close()
-    print("Kolumner i tabellen:", cols)
+    method: str = "append",
+) -> pd.DataFrame:
+    """Sparar dataset till SQLite-databasen."""
+    df = df.copy()
+    load_to_sqlite(df, db_path=db_path, table=table, if_exists=method)
+    return df
 
-if __name__ == "__main__":
-    run_pipeline()
+# Spara till SQLite (gemensam tabell)
+load_dataset_to_db(df=df_clean, method="replace")
+load_dataset_to_db(df=df_val, method="append")
