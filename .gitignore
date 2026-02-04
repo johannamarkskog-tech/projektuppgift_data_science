@@ -1,0 +1,25 @@
+# .env filer som innehåller känslig information
+.env
+
+# Operativsystems-specifika filer
+.DS_Store
+
+# Python cache-filer
+__pycache__/
+*.pyc
+
+# Virtuella miljöer
+venv/
+env/
+.venv/
+env/
+
+# Loggfiler
+*.log
+
+# Datafiler
+data/
+output/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
