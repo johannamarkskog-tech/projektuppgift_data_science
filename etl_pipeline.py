@@ -1,11 +1,3 @@
-"""ETL-pipeline för friskvårdsdata.
-
-Steg:
-1) Läs rådata från CSV.
-2) Rengör och standardisera kolumner.
-3) Spara till SQLite (gemensam tabell) med dataset-flagga.
-"""
-
 import sqlite3
 import numpy as np
 import pandas as pd
@@ -217,32 +209,20 @@ df_val_raw = pd.read_csv("friskvard_validation.csv")
 df_clean = transform_data(df_main_raw)
 df_val = transform_data(df_val_raw)
 
-# Sätt dataset-flagga
-df_clean["dataset"] = "main"
-df_val["dataset"] = "validation"
-
 # Spara i SQLite-databas
-def load_to_sqlite(
-    df: pd.DataFrame,
-    db_path: str = "friskvard_data_cleaned.db",
-    table: str = "friskvard_data",
-    if_exists: str = "replace",
-) -> None:
-    """Sparar DataFrame till SQLite."""
-    conn = sqlite3.connect(db_path)
-    df.to_sql(table, conn, if_exists=if_exists, index=False)
-    conn.close()
-
-
 def load_dataset_to_db(
     df: pd.DataFrame,
     db_path: str = "friskvard_data_cleaned.db",
     table: str = "friskvard_data",
     method: str = "append",
 ) -> pd.DataFrame:
-    """Sparar dataset till SQLite-databasen."""
+    """Sparar datasetet till SQLite-databasen."""
     df = df.copy()
-    load_to_sqlite(df, db_path=db_path, table=table, if_exists=method)
+    conn = sqlite3.connect(db_path)
+    try:
+        df.to_sql(table, conn, if_exists=method, index=False)
+    finally:
+        conn.close()
     return df
 
 # Spara till SQLite (gemensam tabell)
